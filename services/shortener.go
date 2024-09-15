@@ -30,7 +30,7 @@ func getRange(start uint, end uint) (result []uint) {
 
 	return result
 }
-func searchLink(new_link string) (string, error) {
+func searchLink(link string, shrink bool) (string, error) {
 	ctx := context.Background()
 	var byteRedisStruct []byte
 	countDB, err := conn.DBSize(ctx).Uint64()
@@ -44,25 +44,28 @@ func searchLink(new_link string) (string, error) {
 		}
 		var redisStruct models.RedisStruct
 		redisStruct, err = models.UnmarshalBinary(byteRedisStruct, redisStruct)
-		if redisStruct.Link == new_link {
-			return redisStruct.ShrinkLink, nil
+		if !shrink {
+			if redisStruct.Link == link {
+				return redisStruct.ShrinkLink, nil
+			}
+		} else {
+			if redisStruct.ShrinkLink == link {
+				return redisStruct.Link, nil
+			}
 		}
+
 	}
 	return "", nil
 }
 func Shrink(c *gin.Context) {
 	var link models.Input_link
-	if err := c.BindQuery(&link); err != nil {
+	if err := c.BindJSON(&link); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	shrink_link, err := searchLink(link.Link)
+	shrink_link, err := searchLink(link.Link, false)
 	if shrink_link != "" && err == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"link": link.Link, "short_link": shrink_link})
-		return
-	}
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"link": link.Link, "short_link": shrink_link})
 		return
 	}
 	ctx := context.Background()
@@ -79,20 +82,21 @@ func Shrink(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusBadRequest, gin.H{"link": shinked.Link, "short_link": shinked.ShrinkLink})
+	c.JSON(http.StatusOK, gin.H{"link": shinked.Link, "short_link": shinked.ShrinkLink})
 	return
 }
 func Redirect(c *gin.Context) {
-	ctx := context.Background()
-	var byteRedisStruct []byte
-	var countDB uint64 = 1
-	err := conn.Get(ctx, strconv.FormatUint(countDB, 10)).Scan(&byteRedisStruct)
-	if err != nil {
+	var input_link models.Input_link
+	if err := c.BindJSON(&input_link); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	var redisStruct models.RedisStruct
-	redisStruct, err = models.UnmarshalBinary(byteRedisStruct, redisStruct)
-	c.JSON(http.StatusBadRequest, gin.H{"link": redisStruct.Link, "short_link": redisStruct.ShrinkLink})
+	link, err := searchLink(input_link.Link, true)
+	if link != "" && err == nil {
+		c.JSON(http.StatusOK, gin.H{"short_link": link})
+		return
+	}
+	c.JSON(http.StatusBadRequest, gin.H{"error": "try use shrink before redirect"})
 	return
+
 }
