@@ -17,6 +17,6 @@ func main() {
 
 	v1 := r.Group("/")
 	v1.GET("/shrink", services.Shrink) //принимает link и возвращает short_link
-	//v1.GET("/", services.redirect)     //принимает short_link и делает редирект
+	v1.GET("/", services.Redirect)     //принимает short_link и делает редирект
 	r.Run(fmt.Sprintf(":%v", config.SERVER_PORT))
 }
