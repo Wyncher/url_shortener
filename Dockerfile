@@ -5,6 +5,7 @@ RUN go mod download
 ADD services ./services
 ADD config ./config
 ADD models ./models
+ADD redisdata ./redisdata
 ADD db ./db
 CMD ["go", "run", "main.go"]
 EXPOSE 5000

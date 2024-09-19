@@ -24,8 +24,10 @@ services:
           memory: 256M
 
   shortener:
+    build:
+      context: /
+      dockerfile: Dockerfile
     container_name: shortener_container
-    build: /
     command: go run main.go
     ports:
       - 1234:1234
